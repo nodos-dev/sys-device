@@ -1,0 +1,15 @@
+{
+    "info": {
+        "id": {
+            "name": "nos.sys.device",
+            "version": "0.1.0"
+        },
+        "description": "Nodos subsystem for device management",
+        "display_name": "Device",
+        "dependencies": [],
+        "category": "Device"
+    },
+    "custom_types": [],
+    "named_values": [],
+    "binary_path": "Binaries/nosDeviceSubsystem"
+}

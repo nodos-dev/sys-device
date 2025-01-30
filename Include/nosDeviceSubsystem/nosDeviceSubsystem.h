@@ -12,18 +12,36 @@ extern "C"
 
 #include <Nodos/Types.h>
 
-typedef uint64_t nosDeviceHandle;
+typedef uint64_t nosDeviceId;
+
+#define NOS_DEVICE_FLAG_NONE 0
+#define NOS_DEVICE_FLAG_PCIE (1ull << 0)
+#define NOS_DEVICE_FLAG_GRAPHICS (1ull << 1)
+#define NOS_DEVICE_FLAG_VIDEO_IO (1ull << 2)
+
+typedef struct nosDeviceInfo
+{
+	nosName VendorName;
+	nosName ModelName;
+	const char* SerialNumber;
+	uint64_t Flags;
+	int32_t PCIeAddress; // If flags contain PCIE, this field will be read.
+} nosDeviceInfo;
 
 typedef struct nosRegisterDeviceParams {
-	nosName UniqueVendorName;
-	nosName DeviceModelName;
-	const char* DeviceSerialNumber;
+	nosDeviceInfo Device;
+	nosName DisplayName;
+	uint64_t Handle; // Handle used by module to access to the device
 } nosRegisterDeviceParams;
+	
+// 1. Modules register their devices
+// 2. Associate the resulting device id with thier device objects
+// 3. 
 
 typedef struct nosDeviceSubsystem {
-	nosResult (NOSAPI_CALL* RegisterDevice)(const nosRegisterDeviceParams* params, nosDeviceHandle* outDeviceHandle);
-	nosResult (NOSAPI_CALL* UnregisterDevice)(nosDeviceHandle deviceHandle);
-	// TODO
+	nosResult (NOSAPI_CALL* RegisterDevice)(const nosRegisterDeviceParams* params, nosDeviceId* outDeviceId);
+	nosResult (NOSAPI_CALL* UnregisterDevice)(nosDeviceId deviceId);
+	nosResult (NOSAPI_CALL* GetSuitableDevice)(const nosDeviceInfo* info, nosDeviceId* outDeviceId);
 } nosDeviceSubsystem;
 
 #pragma region Helper Declarations & Macros

@@ -1,0 +1,13 @@
+namespace nos.sys.device;
+
+table DeviceInfo {
+    vendor_name: string;
+    model_name: string;
+    serial_number: string;
+    flags: uint64;
+    pcie_address: int;
+}
+
+struct RuntimeDeviceId {
+    id: uint64;
+}

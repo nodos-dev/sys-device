@@ -14,18 +14,20 @@ extern "C"
 
 typedef uint64_t nosDeviceId;
 
-#define NOS_DEVICE_FLAG_NONE 0
-#define NOS_DEVICE_FLAG_PCIE (1ull << 0)
-#define NOS_DEVICE_FLAG_GRAPHICS (1ull << 1)
-#define NOS_DEVICE_FLAG_VIDEO_IO (1ull << 2)
+typedef enum nosDeviceFlags {
+	NOS_DEVICE_FLAG_NONE = 0,
+	NOS_DEVICE_FLAG_PCIE = (1 << 0),
+	NOS_DEVICE_FLAG_GRAPHICS = (1 << 1),
+	NOS_DEVICE_FLAG_VIDEO_IO = (1 << 2),
+} nosDeviceFlags;
 
 typedef struct nosDeviceInfo
 {
 	nosName VendorName;
 	nosName ModelName;
+	uint64_t TopologicalId;
 	const char* SerialNumber;
-	uint64_t Flags;
-	int32_t PCIeAddress; // If flags contain PCIE, this field will be read.
+	nosDeviceFlags Flags;
 } nosDeviceInfo;
 
 typedef struct nosRegisterDeviceParams {
@@ -35,7 +37,7 @@ typedef struct nosRegisterDeviceParams {
 } nosRegisterDeviceParams;
 	
 // 1. Modules register their devices
-// 2. Associate the resulting device id with thier device objects
+// 2. Associate the resulting device id with their device objects
 // 3. 
 
 typedef struct nosDeviceSubsystem {

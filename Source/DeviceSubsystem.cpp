@@ -4,6 +4,8 @@
 
 #include "nosDeviceSubsystem/nosDeviceSubsystem.h"
 
+#include "EditorEvents_generated.h"
+
 NOS_INIT_WITH_MIN_REQUIRED_MINOR(0); // APITransition: Reminder that this should be reset after next major!
 
 NOS_BEGIN_IMPORT_DEPS()
@@ -15,19 +17,22 @@ std::unordered_map<uint32_t, nosDeviceSubsystem*> GExportedSubsystemVersions;
 
 struct DeviceProperties
 {
+	nosDeviceId Id;
 	nos::Name VendorName;
 	nos::Name ModelName;
+	uint64_t TopologicalId;
 	std::string SerialNumber;
-	uint64_t Flags;
-	int32_t PCIeAddress;
+	nosDeviceFlags Flags;
 	nos::Name DisplayName;
 
-	DeviceProperties(const nosRegisterDeviceParams& params)
-		: VendorName(params.Device.VendorName)
+	DeviceProperties() = default;
+	DeviceProperties(nosDeviceId id, const nosRegisterDeviceParams& params)
+		: Id (id)
+		, VendorName(params.Device.VendorName)
 		, ModelName(params.Device.ModelName)
 		, SerialNumber(params.Device.SerialNumber)
 		, Flags(params.Device.Flags)
-		, PCIeAddress(params.Device.PCIeAddress)
+		, TopologicalId(params.Device.TopologicalId)
 		, DisplayName(params.DisplayName)
 	{}
 };
@@ -38,14 +43,12 @@ struct DeviceManager
 	DeviceManager& operator=(const DeviceManager&) = delete;
 	static DeviceManager& GetInstance() { return Instance; }
 
-	nosResult RegisterDevice(const nosRegisterDeviceParams* params, nosDeviceId* outDeviceId)
+	nosResult RegisterDevice(const nosRegisterDeviceParams& params, nosDeviceId* outDeviceId)
 	{
-		if (!params || !outDeviceId)
-			return NOS_RESULT_INVALID_ARGUMENT;
 		// TODO: Validate
 		std::unique_lock lock(DevicesMutex);
 		++NextDeviceId;
-		DeviceProperties props(*params);
+		DeviceProperties props(NextDeviceId, params);
 		*outDeviceId = NextDeviceId;
 		Devices[*outDeviceId] = std::move(props);
 		return NOS_RESULT_SUCCESS;
@@ -60,9 +63,66 @@ struct DeviceManager
 		Devices.erase(it);
 		return NOS_RESULT_SUCCESS;
 	}
-	
+
+	nosResult GetSuitableDevice(const nosDeviceInfo& query, nosDeviceId* outDeviceId)
+	{
+		std::shared_lock lock(DevicesMutex);
+		std::unordered_set<DeviceProperties*> suitableDevices;
+
+		// Filter devices by vendor name
+		for (auto& [id, props] : Devices)
+			if (props.VendorName == query.VendorName)
+				if ((query.Flags & props.Flags) == query.Flags) // Queried flags must be supported by the device
+					suitableDevices.insert(&props);
+
+		if (suitableDevices.empty())
+			return NOS_RESULT_NOT_FOUND;
+
+		for (auto* device : suitableDevices)
+		{
+			if (device->ModelName == query.ModelName) // First, check model name
+			{
+				if (device->TopologicalId == query.TopologicalId) // Then, check topological ID
+				{
+					*outDeviceId = device->Id;
+					return NOS_RESULT_SUCCESS;
+				}
+			}
+		}
+
+		// No same model found at the same slot, return the first serial name match.
+		for (auto* device : suitableDevices)
+		{
+			if (device->SerialNumber == query.SerialNumber)
+			{
+				*outDeviceId = device->Id;
+				return NOS_RESULT_SUCCESS;
+			}
+		}
+
+		// Return the first model name match.
+		for (auto* device : suitableDevices)
+		{
+			if (device->ModelName == query.ModelName)
+			{
+				*outDeviceId = device->Id;
+				return NOS_RESULT_SUCCESS;
+			}
+		}
+
+		*outDeviceId = (*suitableDevices.begin())->Id;
+		return NOS_RESULT_SUCCESS;
+	}
+
 private:
 	DeviceManager() = default;
+
+	void SendDeviceListToEditors()
+	{
+		// TODO
+
+	}
+
 	static DeviceManager Instance;
 
 	std::shared_mutex DevicesMutex;
@@ -74,14 +134,23 @@ DeviceManager DeviceManager::Instance{};
 
 nosResult NOSAPI_CALL RegisterDevice(const nosRegisterDeviceParams* params, nosDeviceId* outDeviceId)
 {
-	return DeviceManager::GetInstance().RegisterDevice(params, outDeviceId);
+	if (!params || !outDeviceId)
+		return NOS_RESULT_INVALID_ARGUMENT;
+	return DeviceManager::GetInstance().RegisterDevice(*params, outDeviceId);
 }
 
 nosResult NOSAPI_CALL UnregisterDevice(nosDeviceId deviceId)
 {
 	return DeviceManager::GetInstance().UnregisterDevice(deviceId);
 }
-	
+
+nosResult NOSAPI_CALL GetSuitableDevice(const nosDeviceInfo* info, nosDeviceId* outDeviceId)
+{
+	if (!info || !outDeviceId)
+		return NOS_RESULT_INVALID_ARGUMENT;
+	return DeviceManager::GetInstance().GetSuitableDevice(*info, outDeviceId);
+}
+
 nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 {
 	auto it = GExportedSubsystemVersions.find(minorVersion);

@@ -1,0 +1,15 @@
+namespace nos.sys.device.editor;
+
+include "Device.fbs";
+
+union SubsystemEventUnion {
+	DeviceList
+}
+
+table SubsystemEvent {
+	event:SubsystemEventUnion;
+}
+
+table DeviceList {
+    devices: [nos.sys.device.DeviceInfo];
+}

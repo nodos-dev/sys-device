@@ -12,7 +12,7 @@ endif()
 nos_find_sdk("1.3.0" NOS_PLUGIN_SDK_TARGET NOS_SUBSYSTEM_SDK_TARGET NOS_SDK_DIR)
 cmake_path(SET FLATC_EXECUTABLE "${NOS_SDK_DIR}/bin/flatc")
 
-nos_generate_flatbuffers("${CMAKE_CURRENT_SOURCE_DIR}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Source" "cpp" "" nosDeviceSubsystem_generated)
+nos_generate_flatbuffers("${CMAKE_CURRENT_SOURCE_DIR}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Include" "cpp" "" nosDeviceSubsystem_generated)
 set(DEPENDENCIES nosDeviceSubsystem_generated ${NOS_SUBSYSTEM_SDK_TARGET})
 
 nos_add_plugin("nosDeviceSubsystem" "${DEPENDENCIES}" "")

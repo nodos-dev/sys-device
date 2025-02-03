@@ -3,8 +3,8 @@
 #include <Nodos/Name.hpp>
 
 #include "nosDeviceSubsystem/nosDeviceSubsystem.h"
-
-#include "EditorEvents_generated.h"
+#include "nosDeviceSubsystem/Device_generated.h"
+#include "nosDeviceSubsystem/EditorEvents_generated.h"
 
 NOS_INIT_WITH_MIN_REQUIRED_MINOR(0); // APITransition: Reminder that this should be reset after next major!
 
@@ -51,6 +51,7 @@ struct DeviceManager
 		DeviceProperties props(NextDeviceId, params);
 		*outDeviceId = NextDeviceId;
 		Devices[*outDeviceId] = std::move(props);
+		SendDeviceListToEditors();
 		return NOS_RESULT_SUCCESS;
 	}
 
@@ -61,6 +62,7 @@ struct DeviceManager
 		if (it == Devices.end())
 			return NOS_RESULT_NOT_FOUND;
 		Devices.erase(it);
+		SendDeviceListToEditors();
 		return NOS_RESULT_SUCCESS;
 	}
 
@@ -119,8 +121,19 @@ private:
 
 	void SendDeviceListToEditors()
 	{
-		// TODO
-
+		flatbuffers::FlatBufferBuilder fbb;
+		std::vector<flatbuffers::Offset<DeviceInfo>> devices;
+		for (auto& [id, props] : Devices)
+		{
+			auto deviceInfo = CreateDeviceInfoDirect(fbb, props.VendorName.AsCStr(),
+				props.ModelName.AsCStr(), props.TopologicalId, props.SerialNumber.c_str(), props.Flags);
+			devices.push_back(deviceInfo);
+		}
+		auto offset = editor::CreateDeviceListDirect(fbb, &devices);
+		auto event  = editor::CreateSubsystemEvent(fbb, editor::SubsystemEventUnion::DeviceList, offset.Union());
+		fbb.Finish(event);
+		nos::Buffer buf = fbb.Release();
+		nosEngine.SendCustomMessageToEditors(nosEngine.Module->Id.Name, buf);
 	}
 
 	static DeviceManager Instance;

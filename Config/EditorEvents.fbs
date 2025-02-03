@@ -1,6 +1,6 @@
-namespace nos.sys.device.editor;
-
 include "Device.fbs";
+
+namespace nos.sys.device.editor;
 
 union SubsystemEventUnion {
 	DeviceList

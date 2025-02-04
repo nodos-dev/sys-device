@@ -1,6 +1,7 @@
 // Copyright MediaZ Teknoloji A.S. All Rights Reserved.
 #include <Nodos/SubsystemAPI.h>
 #include <Nodos/Name.hpp>
+#include <Nodos/Helpers.hpp>
 
 #include "nosDeviceSubsystem/nosDeviceSubsystem.h"
 #include "nosDeviceSubsystem/Device_generated.h"
@@ -21,7 +22,7 @@ struct DeviceProperties
 	nos::Name VendorName;
 	nos::Name ModelName;
 	uint64_t TopologicalId;
-	std::string SerialNumber;
+	nos::Name SerialNumber;
 	nosDeviceFlags Flags;
 	nos::Name DisplayName;
 
@@ -35,6 +36,17 @@ struct DeviceProperties
 		, TopologicalId(params.Device.TopologicalId)
 		, DisplayName(params.DisplayName)
 	{}
+
+	nos::Table<DeviceInfo> GetDeviceInfoPinValue() const
+	{
+		TDeviceInfo info;
+		info.vendor_name = VendorName.AsString();
+		info.model_name = ModelName.AsString();
+		info.topological_id = TopologicalId;
+		info.serial_number = SerialNumber.AsString();
+		info.flags = (DeviceFlags)Flags;
+		return nos::Buffer::From(info);
+	}
 };
 
 struct DeviceManager
@@ -51,7 +63,7 @@ struct DeviceManager
 		DeviceProperties props(NextDeviceId, params);
 		*outDeviceId = NextDeviceId;
 		Devices[*outDeviceId] = std::move(props);
-		SendDeviceListToEditors();
+		OnDeviceListUpdated();
 		return NOS_RESULT_SUCCESS;
 	}
 
@@ -62,7 +74,7 @@ struct DeviceManager
 		if (it == Devices.end())
 			return NOS_RESULT_NOT_FOUND;
 		Devices.erase(it);
-		SendDeviceListToEditors();
+		OnDeviceListUpdated();
 		return NOS_RESULT_SUCCESS;
 	}
 
@@ -116,8 +128,20 @@ struct DeviceManager
 		return NOS_RESULT_SUCCESS;
 	}
 
+	std::string GetDeviceListName(const std::string& vendorName)
+	{
+		std::string listName = NOS_SYS_DEVICE_SUBSYSTEM_NAME ".DeviceList." + vendorName;
+		return listName;
+	}
+
 private:
 	DeviceManager() = default;
+
+	void OnDeviceListUpdated()
+	{
+		SendDeviceListToEditors();
+		UpdateDeviceNamedValues();
+	}
 
 	void SendDeviceListToEditors()
 	{
@@ -126,7 +150,7 @@ private:
 		for (auto& [id, props] : Devices)
 		{
 			auto deviceInfo = CreateDeviceInfoDirect(fbb, props.VendorName.AsCStr(),
-				props.ModelName.AsCStr(), props.TopologicalId, props.SerialNumber.c_str(), (DeviceFlags)props.Flags);
+				props.ModelName.AsCStr(), props.TopologicalId, props.SerialNumber.AsCStr(), (DeviceFlags)props.Flags);
 			devices.push_back(deviceInfo);
 		}
 		auto offset = editor::CreateDeviceListDirect(fbb, &devices);
@@ -134,6 +158,50 @@ private:
 		fbb.Finish(event);
 		nos::Buffer buf = fbb.Release();
 		nosEngine.SendCustomMessageToEditors(nosEngine.Module->Id.Name, buf);
+	}
+
+	void UpdateDeviceNamedValues()
+	{
+		TUpdateNamedValues update;
+		std::unordered_map<std::string, std::vector<DeviceProperties>> map;
+		for (auto& [id, props] : Devices)
+		{
+			map[props.VendorName.AsString()].push_back(props);
+		}
+		std::unordered_map<std::string, std::unordered_map<std::string, uint32_t>> modelIndices;
+		for (auto& [vendor, devices] : map)
+		{
+			for (auto& device : devices)
+			{
+				modelIndices[vendor][device.ModelName.AsString()]++;
+			}
+		}
+		for (auto& [vendor, devices] : map)
+		{
+			fb::TNamedValues namedValues;
+			namedValues.name = GetDeviceListName(vendor);
+			for (auto& device : devices)
+			{
+				fb::TNamedValue value;
+				auto modelNameStr = device.ModelName.AsString();
+				value.value_name = modelNameStr + " - " + std::to_string(modelIndices[vendor][modelNameStr]);
+				value.type_name = NOS_SYS_DEVICE_SUBSYSTEM_NAME ".DeviceInfo";
+				auto buf = device.GetDeviceInfoPinValue();
+				value.pin_value = buf;
+				namedValues.values.emplace_back(std::make_unique<fb::TNamedValue>(std::move(value)));
+			}
+			fb::TNamedValue none;
+			none.value_name = "None";
+			none.type_name = NOS_SYS_DEVICE_SUBSYSTEM_NAME ".DeviceInfo";
+			none.pin_value = nos::Buffer::From(TDeviceInfo{.vendor_name = "None"});
+			namedValues.values.emplace_back(std::make_unique<fb::TNamedValue>(std::move(none)));
+			fb::TNamedValue unknown;
+			unknown.value_name = "Unknown";
+			unknown.type_name = NOS_SYS_DEVICE_SUBSYSTEM_NAME ".DeviceInfo";
+			namedValues.values.emplace_back(std::make_unique<fb::TNamedValue>(std::move(unknown)));
+			update.updated_values.emplace_back(std::make_unique<fb::TNamedValues>(std::move(namedValues)));
+		}
+		SendNamedValueUpdates(update);
 	}
 
 	static DeviceManager Instance;
@@ -164,6 +232,14 @@ nosResult NOSAPI_CALL GetSuitableDevice(const nosDeviceInfo* info, nosDeviceId* 
 	return DeviceManager::GetInstance().GetSuitableDevice(*info, outDeviceId);
 }
 
+nosResult NOSAPI_CALL GetDeviceListName(nosName vendorName, nosName* outNamedValueListName)
+{
+	if (!outNamedValueListName)
+		return NOS_RESULT_INVALID_ARGUMENT;
+	*outNamedValueListName = nos::Name(DeviceManager::GetInstance().GetDeviceListName(nos::Name(vendorName).AsString()));
+	return NOS_RESULT_SUCCESS;
+}
+
 nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 {
 	auto it = GExportedSubsystemVersions.find(minorVersion);
@@ -175,6 +251,8 @@ nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 	auto* subsystem = new nosDeviceSubsystem();
 	subsystem->RegisterDevice = RegisterDevice;
 	subsystem->UnregisterDevice = UnregisterDevice;
+	subsystem->GetSuitableDevice = GetSuitableDevice;
+	subsystem->GetDeviceListNameForVendor = GetDeviceListName;
 	*outSubsystemContext = subsystem;
 	GExportedSubsystemVersions[minorVersion] = subsystem;
 	return NOS_RESULT_SUCCESS;

@@ -26,7 +26,7 @@ typedef struct nosDeviceInfo
 	nosName VendorName;
 	nosName ModelName;
 	uint64_t TopologicalId;
-	const char* SerialNumber;
+	nosName SerialNumber;
 	nosDeviceFlags Flags;
 } nosDeviceInfo;
 
@@ -35,15 +35,12 @@ typedef struct nosRegisterDeviceParams {
 	nosName DisplayName;
 	uint64_t Handle; // Handle used by module to access to the device
 } nosRegisterDeviceParams;
-	
-// 1. Modules register their devices
-// 2. Associate the resulting device id with their device objects
-// 3. 
 
 typedef struct nosDeviceSubsystem {
 	nosResult (NOSAPI_CALL* RegisterDevice)(const nosRegisterDeviceParams* params, nosDeviceId* outDeviceId);
 	nosResult (NOSAPI_CALL* UnregisterDevice)(nosDeviceId deviceId);
 	nosResult (NOSAPI_CALL* GetSuitableDevice)(const nosDeviceInfo* info, nosDeviceId* outDeviceId);
+	nosResult (NOSAPI_CALL* GetDeviceListNameForVendor)(nosName vendorName, nosName* outName);
 } nosDeviceSubsystem;
 
 #pragma region Helper Declarations & Macros
@@ -67,5 +64,40 @@ extern nosDeviceSubsystem* nosDevice;
 #if __cplusplus
 }
 #endif
+
+#pragma region C++ Helpers
+#if __cplusplus
+#include "Device_generated.h"
+namespace nos::sys::device
+{
+inline nosDeviceInfo ConvertDeviceInfo(nos::sys::device::DeviceInfo const& info)
+{
+	return {
+		.VendorName = nos::Name(info.vendor_name() ? info.vendor_name()->string_view() : ""),
+		.ModelName = nos::Name(info.model_name() ? info.model_name()->string_view() : ""),
+		.TopologicalId = info.topological_id(),
+		.SerialNumber = nos::Name(info.serial_number() ? info.serial_number()->string_view() : ""),
+		.Flags = static_cast<nosDeviceFlags>(info.flags()),
+	};
+}
+
+inline nos::sys::device::TDeviceInfo ConvertDeviceInfo(nosDeviceInfo const& info)
+{
+	return {
+		.vendor_name = nos::Name(info.VendorName).AsString(),
+		.model_name = nos::Name(info.ModelName).AsString(),
+		.topological_id = info.TopologicalId,
+		.serial_number = nos::Name(info.SerialNumber).AsString(),
+		.flags = static_cast<nos::sys::device::DeviceFlags>(info.Flags),
+	};
+}
+
+inline nos::sys::device::TDeviceInfo NoneDeviceInfo()
+{
+	return {.vendor_name = "None"};
+}
+}
+#endif
+#pragma endregion
 
 #endif

@@ -9,7 +9,9 @@
         "dependencies": [],
         "category": "Device"
     },
-    "custom_types": [],
+    "custom_types": [
+        "Config/Device.fbs"
+    ],
     "named_values": [],
     "binary_path": "Binaries/nosDeviceSubsystem"
 }

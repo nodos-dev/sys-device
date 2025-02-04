@@ -1,11 +1,17 @@
 namespace nos.sys.device;
 
+enum DeviceFlags : uint(bit_flags) {
+	PCIE = 0,
+	GRAPHICS = 1,
+	VIDEO_IO = 2,
+}
+
 table DeviceInfo {
     vendor_name: string;
     model_name: string;
     topological_id: uint64;
     serial_number: string;
-    flags: uint64;
+    flags: DeviceFlags;
 }
 
 struct RuntimeDeviceId {

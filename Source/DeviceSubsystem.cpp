@@ -126,7 +126,7 @@ private:
 		for (auto& [id, props] : Devices)
 		{
 			auto deviceInfo = CreateDeviceInfoDirect(fbb, props.VendorName.AsCStr(),
-				props.ModelName.AsCStr(), props.TopologicalId, props.SerialNumber.c_str(), props.Flags);
+				props.ModelName.AsCStr(), props.TopologicalId, props.SerialNumber.c_str(), (DeviceFlags)props.Flags);
 			devices.push_back(deviceInfo);
 		}
 		auto offset = editor::CreateDeviceListDirect(fbb, &devices);

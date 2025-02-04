@@ -16,7 +16,7 @@ typedef uint64_t nosDeviceId;
 
 typedef enum nosDeviceFlags {
 	NOS_DEVICE_FLAG_NONE = 0,
-	NOS_DEVICE_FLAG_PCIE = (1 << 0),
+	NOS_DEVICE_FLAG_PCI = (1 << 0),
 	NOS_DEVICE_FLAG_GRAPHICS = (1 << 1),
 	NOS_DEVICE_FLAG_VIDEO_IO = (1 << 2),
 } nosDeviceFlags;

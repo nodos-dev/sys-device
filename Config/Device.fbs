@@ -1,7 +1,7 @@
 namespace nos.sys.device;
 
 enum DeviceFlags : uint(bit_flags) {
-	PCIE = 0,
+	PCI = 0,
 	GRAPHICS = 1,
 	VIDEO_IO = 2,
 }

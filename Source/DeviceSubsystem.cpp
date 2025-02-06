@@ -19,12 +19,17 @@ std::unordered_map<uint32_t, nosDeviceSubsystem*> GExportedSubsystemVersions;
 struct DeviceProperties
 {
 	nosDeviceId Id;
+
+	// Characteristics
 	nos::Name VendorName;
 	nos::Name ModelName;
 	uint64_t TopologicalId;
 	nos::Name SerialNumber;
 	nosDeviceFlags Flags;
+
+	// Other properties
 	nos::Name DisplayName;
+	uint64_t Handle;
 
 	DeviceProperties() = default;
 	DeviceProperties(nosDeviceId id, const nosRegisterDeviceParams& params)
@@ -35,6 +40,7 @@ struct DeviceProperties
 		, Flags(params.Device.Flags)
 		, TopologicalId(params.Device.TopologicalId)
 		, DisplayName(params.DisplayName)
+		, Handle(params.Handle)
 	{}
 
 	nos::Table<DeviceInfo> GetDeviceInfoPinValue() const
@@ -134,6 +140,17 @@ struct DeviceManager
 		return listName;
 	}
 
+	nosResult GetDeviceHandle(nosDeviceId id, uint64_t* outHandle)
+	{
+		std::shared_lock lock(DevicesMutex);
+		auto it = Devices.find(id);
+		if (it == Devices.end())
+			return NOS_RESULT_NOT_FOUND;
+		if (outHandle)
+			*outHandle = it->second.Handle;
+		return NOS_RESULT_SUCCESS;
+	}
+
 private:
 	DeviceManager() = default;
 
@@ -193,7 +210,7 @@ private:
 			fb::TNamedValue none;
 			none.value_name = "None";
 			none.type_name = NOS_SYS_DEVICE_SUBSYSTEM_NAME ".DeviceInfo";
-			none.pin_value = nos::Buffer::From(TDeviceInfo{.vendor_name = "None"});
+			none.pin_value = nos::Buffer::From(NoneDeviceInfo());
 			namedValues.values.emplace_back(std::make_unique<fb::TNamedValue>(std::move(none)));
 			fb::TNamedValue unknown;
 			unknown.value_name = "Unknown";
@@ -240,6 +257,11 @@ nosResult NOSAPI_CALL GetDeviceListName(nosName vendorName, nosName* outNamedVal
 	return NOS_RESULT_SUCCESS;
 }
 
+nosResult NOSAPI_CALL GetDeviceHandle(nosDeviceId deviceId, uint64_t* outHandle)
+{
+	return DeviceManager::GetInstance().GetDeviceHandle(deviceId, outHandle);
+}
+
 nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 {
 	auto it = GExportedSubsystemVersions.find(minorVersion);
@@ -253,6 +275,7 @@ nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 	subsystem->UnregisterDevice = UnregisterDevice;
 	subsystem->GetSuitableDevice = GetSuitableDevice;
 	subsystem->GetDeviceListNameForVendor = GetDeviceListName;
+	subsystem->GetDeviceHandle = GetDeviceHandle;
 	*outSubsystemContext = subsystem;
 	GExportedSubsystemVersions[minorVersion] = subsystem;
 	return NOS_RESULT_SUCCESS;

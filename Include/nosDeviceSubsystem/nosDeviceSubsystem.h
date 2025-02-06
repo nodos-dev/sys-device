@@ -41,6 +41,7 @@ typedef struct nosDeviceSubsystem {
 	nosResult (NOSAPI_CALL* UnregisterDevice)(nosDeviceId deviceId);
 	nosResult (NOSAPI_CALL* GetSuitableDevice)(const nosDeviceInfo* info, nosDeviceId* outDeviceId);
 	nosResult (NOSAPI_CALL* GetDeviceListNameForVendor)(nosName vendorName, nosName* outName);
+	nosResult (NOSAPI_CALL* GetDeviceHandle)(nosDeviceId deviceId, uint64_t* outHandle);
 } nosDeviceSubsystem;
 
 #pragma region Helper Declarations & Macros

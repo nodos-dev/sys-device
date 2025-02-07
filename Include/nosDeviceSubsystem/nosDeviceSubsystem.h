@@ -42,6 +42,8 @@ typedef struct nosDeviceSubsystem {
 	nosResult (NOSAPI_CALL* GetSuitableDevice)(const nosDeviceInfo* info, nosDeviceId* outDeviceId);
 	nosResult (NOSAPI_CALL* GetDeviceListNameForVendor)(nosName vendorName, nosName* outName);
 	nosResult (NOSAPI_CALL* GetDeviceHandle)(nosDeviceId deviceId, uint64_t* outHandle);
+	nosResult (NOSAPI_CALL* GetDeviceInfo)(nosDeviceId deviceId, nosDeviceInfo* outInfo);
+	void (NOSAPI_CALL* GetDevicesWithVendor)(nosName vendorName, nosDeviceId* outDevices, uint64_t* outCount);
 } nosDeviceSubsystem;
 
 #pragma region Helper Declarations & Macros
@@ -71,7 +73,7 @@ extern nosDeviceSubsystem* nosDevice;
 #include "Device_generated.h"
 namespace nos::sys::device
 {
-inline nosDeviceInfo ConvertDeviceInfo(nos::sys::device::DeviceInfo const& info)
+inline nosDeviceInfo ConvertDeviceInfo(DeviceInfo const& info)
 {
 	return {
 		.VendorName = nos::Name(info.vendor_name() ? info.vendor_name()->string_view() : ""),
@@ -82,7 +84,18 @@ inline nosDeviceInfo ConvertDeviceInfo(nos::sys::device::DeviceInfo const& info)
 	};
 }
 
-inline nos::sys::device::TDeviceInfo ConvertDeviceInfo(nosDeviceInfo const& info)
+inline nosDeviceInfo ConvertDeviceInfo(TDeviceInfo const& info)
+{
+	return {
+		.VendorName = nos::Name(info.vendor_name),
+		.ModelName = nos::Name(info.model_name),
+		.TopologicalId = info.topological_id,
+		.SerialNumber = nos::Name(info.serial_number),
+		.Flags = static_cast<nosDeviceFlags>(info.flags),
+	};
+}
+
+inline TDeviceInfo ConvertDeviceInfo(nosDeviceInfo const& info)
 {
 	return {
 		.vendor_name = nos::Name(info.VendorName).AsString(),
@@ -93,7 +106,7 @@ inline nos::sys::device::TDeviceInfo ConvertDeviceInfo(nosDeviceInfo const& info
 	};
 }
 
-inline nos::sys::device::TDeviceInfo NoneDeviceInfo()
+inline TDeviceInfo NoneDeviceInfo()
 {
 	return {.vendor_name = "None"};
 }

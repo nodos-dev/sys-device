@@ -151,6 +151,36 @@ struct DeviceManager
 		return NOS_RESULT_SUCCESS;
 	}
 
+	nosResult GetDeviceInfo(nosDeviceId id, nosDeviceInfo* outInfo)
+	{
+		std::shared_lock lock(DevicesMutex);
+		auto it = Devices.find(id);
+		if (it == Devices.end())
+			return NOS_RESULT_NOT_FOUND;
+		if (outInfo)
+		{
+			outInfo->VendorName = it->second.VendorName;
+			outInfo->ModelName = it->second.ModelName;
+			outInfo->TopologicalId = it->second.TopologicalId;
+			outInfo->SerialNumber = it->second.SerialNumber;
+			outInfo->Flags = it->second.Flags;
+		}
+		return NOS_RESULT_SUCCESS;
+	}
+
+	void GetDevicesWithVendor(nosName vendorName, nosDeviceId* outDevices, uint64_t* outCount)
+	{
+		std::shared_lock lock(DevicesMutex);
+		std::vector<nosDeviceId> devices;
+		for (auto& [id, props] : Devices)
+			if (props.VendorName == vendorName)
+				devices.push_back(id);
+		if (outCount)
+			*outCount = devices.size();
+		if (outDevices)
+			std::copy(devices.begin(), devices.end(), outDevices);
+	}
+
 private:
 	DeviceManager() = default;
 
@@ -262,6 +292,16 @@ nosResult NOSAPI_CALL GetDeviceHandle(nosDeviceId deviceId, uint64_t* outHandle)
 	return DeviceManager::GetInstance().GetDeviceHandle(deviceId, outHandle);
 }
 
+nosResult NOSAPI_CALL GetDeviceInfo(nosDeviceId deviceId, nosDeviceInfo* outInfo)
+{
+	return DeviceManager::GetInstance().GetDeviceInfo(deviceId, outInfo);
+}
+
+void NOSAPI_CALL GetDevicesWithVendor(nosName vendorName, nosDeviceId* outDevices, uint64_t* outCount)
+{
+	DeviceManager::GetInstance().GetDevicesWithVendor(nos::Name(vendorName), outDevices, outCount);
+}
+
 nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 {
 	auto it = GExportedSubsystemVersions.find(minorVersion);
@@ -276,6 +316,8 @@ nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 	subsystem->GetSuitableDevice = GetSuitableDevice;
 	subsystem->GetDeviceListNameForVendor = GetDeviceListName;
 	subsystem->GetDeviceHandle = GetDeviceHandle;
+	subsystem->GetDeviceInfo = GetDeviceInfo;
+	subsystem->GetDevicesWithVendor = GetDevicesWithVendor;
 	*outSubsystemContext = subsystem;
 	GExportedSubsystemVersions[minorVersion] = subsystem;
 	return NOS_RESULT_SUCCESS;

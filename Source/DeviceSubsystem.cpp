@@ -204,7 +204,10 @@ private:
 		auto event  = editor::CreateSubsystemEvent(fbb, editor::SubsystemEventUnion::DeviceList, offset.Union());
 		fbb.Finish(event);
 		nos::Buffer buf = fbb.Release();
-		nosSendEditorMessageParams params { .Message = buf, .DispatchType = NOS_EDITOR_MESSAGE_DISPATCH_TYPE_BROADCAST};
+		nosSendEditorMessageParams params {
+			.Message = buf,
+			.DispatchType = NOS_EDITOR_MESSAGE_DISPATCH_TYPE_BROADCAST,
+		};
 		nosEngine.SendEditorMessage(&params);
 	}
 

@@ -110,6 +110,31 @@ inline TDeviceInfo NoneDeviceInfo()
 {
 	return {.vendor_name = "None"};
 }
+
+inline std::string GetDeviceListNameForVendor(nos::Name vendorName)
+{
+	nosName outName{};
+	auto res = nosDevice->GetDeviceListNameForVendor(vendorName, &outName);
+	assert(res == NOS_RESULT_SUCCESS);
+	return nos::Name(outName).AsString();
+}
+
+inline std::vector<sys::device::TDeviceInfo> GetDevicesWithVendor(nos::Name vendorName)
+{
+	uint64_t count{};
+	nosDevice->GetDevicesWithVendor(vendorName, nullptr, &count);
+	std::vector<nosDeviceId> devices(count);
+	nosDevice->GetDevicesWithVendor(vendorName, devices.data(), &count);
+	std::vector<sys::device::TDeviceInfo> deviceInfos;
+	for (auto& device : devices)
+	{
+		nosDeviceInfo info{};
+		nosDevice->GetDeviceInfo(device, &info);
+		deviceInfos.push_back(sys::device::ConvertDeviceInfo(info));
+	}
+	return deviceInfos;
+}
+
 }
 #endif
 #pragma endregion

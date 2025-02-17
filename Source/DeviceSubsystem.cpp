@@ -204,7 +204,11 @@ private:
 		auto event  = editor::CreateSubsystemEvent(fbb, editor::SubsystemEventUnion::DeviceList, offset.Union());
 		fbb.Finish(event);
 		nos::Buffer buf = fbb.Release();
-		nosEngine.SendCustomMessageToEditors(nosEngine.Module->Id.Name, buf);
+		nosSendEditorMessageParams params {
+			.Message = buf,
+			.DispatchType = NOS_EDITOR_MESSAGE_DISPATCH_TYPE_BROADCAST,
+		};
+		nosEngine.SendEditorMessage(&params);
 	}
 
 	void UpdateDeviceNamedValues()

@@ -49,18 +49,18 @@ typedef struct nosDeviceSubsystem {
 #pragma region Helper Declarations & Macros
 
 // Make sure these are same with nossys file.
-#define NOS_SYS_DEVICE_SUBSYSTEM_NAME "nos.sys.device"
-#define NOS_SYS_DEVICE_SUBSYSTEM_VERSION_MAJOR 0
-#define NOS_SYS_DEVICE_SUBSYSTEM_VERSION_MINOR 2
+#define NOS_DEVICE_SUBSYSTEM_NAME "nos.sys.device"
+#define NOS_DEVICE_SUBSYSTEM_VERSION_MAJOR 0
+#define NOS_DEVICE_SUBSYSTEM_VERSION_MINOR 2
 
 extern struct nosModuleInfo nosDeviceSubsystemModuleInfo;
 extern nosDeviceSubsystem* nosDevice;
 
-#define NOS_SYS_DEVICE_SUBSYSTEM_INIT()         \
+#define NOS_DEVICE_SUBSYSTEM_INIT()         \
 	nosModuleInfo nosDeviceSubsystemModuleInfo; \
 	nosDeviceSubsystem* nosDevice = nullptr;
 
-#define NOS_SYS_DEVICE_SUBSYSTEM_IMPORT() NOS_IMPORT_DEP(NOS_SYS_DEVICE_SUBSYSTEM_NAME, nosDeviceSubsystemModuleInfo, nosDevice)
+#define NOS_DEVICE_SUBSYSTEM_IMPORT() NOS_IMPORT_DEP(NOS_DEVICE_SUBSYSTEM_NAME, nosDeviceSubsystemModuleInfo, nosDevice)
 
 #pragma endregion
 

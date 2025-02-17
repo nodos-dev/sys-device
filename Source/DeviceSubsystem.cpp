@@ -136,7 +136,7 @@ struct DeviceManager
 
 	std::string GetDeviceListName(const std::string& vendorName)
 	{
-		std::string listName = NOS_SYS_DEVICE_SUBSYSTEM_NAME ".DeviceList." + vendorName;
+		std::string listName = NOS_DEVICE_SUBSYSTEM_NAME ".DeviceList." + vendorName;
 		return listName;
 	}
 
@@ -236,19 +236,19 @@ private:
 				fb::TNamedValue value;
 				auto modelNameStr = device.ModelName.AsString();
 				value.value_name = modelNameStr + " - " + std::to_string(modelIndices[vendor][modelNameStr]);
-				value.type_name = NOS_SYS_DEVICE_SUBSYSTEM_NAME ".DeviceInfo";
+				value.type_name = NOS_DEVICE_SUBSYSTEM_NAME ".DeviceInfo";
 				auto buf = device.GetDeviceInfoPinValue();
 				value.pin_value = buf;
 				namedValues.values.emplace_back(std::make_unique<fb::TNamedValue>(std::move(value)));
 			}
 			fb::TNamedValue none;
 			none.value_name = "None";
-			none.type_name = NOS_SYS_DEVICE_SUBSYSTEM_NAME ".DeviceInfo";
+			none.type_name = NOS_DEVICE_SUBSYSTEM_NAME ".DeviceInfo";
 			none.pin_value = nos::Buffer::From(NoneDeviceInfo());
 			namedValues.values.emplace_back(std::make_unique<fb::TNamedValue>(std::move(none)));
 			fb::TNamedValue unknown;
 			unknown.value_name = "Unknown";
-			unknown.type_name = NOS_SYS_DEVICE_SUBSYSTEM_NAME ".DeviceInfo";
+			unknown.type_name = NOS_DEVICE_SUBSYSTEM_NAME ".DeviceInfo";
 			namedValues.values.emplace_back(std::make_unique<fb::TNamedValue>(std::move(unknown)));
 			update.updated_values.emplace_back(std::make_unique<fb::TNamedValues>(std::move(namedValues)));
 		}

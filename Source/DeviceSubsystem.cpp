@@ -181,16 +181,22 @@ struct DeviceManager
 			std::copy(devices.begin(), devices.end(), outDevices);
 	}
 
+	void SendDeviceListToEditor(uint64_t editorId)
+	{
+		std::shared_lock lock(DevicesMutex);
+		SendDeviceListToEditorsUnlocked(editorId);
+	}
+
 private:
 	DeviceManager() = default;
 
 	void OnDeviceListUpdated()
 	{
-		SendDeviceListToEditors();
-		UpdateDeviceNamedValues();
+		SendDeviceListToEditorsUnlocked();
+		UpdateDeviceNamedValuesUnlocked();
 	}
 
-	void SendDeviceListToEditors()
+	void SendDeviceListToEditorsUnlocked(std::optional<uint64_t> editorId = std::nullopt)
 	{
 		flatbuffers::FlatBufferBuilder fbb;
 		std::vector<flatbuffers::Offset<DeviceInfo>> devices;
@@ -208,10 +214,15 @@ private:
 			.Message = buf,
 			.DispatchType = NOS_EDITOR_MESSAGE_DISPATCH_TYPE_BROADCAST,
 		};
+		if (editorId)
+		{
+			params.DispatchType = NOS_EDITOR_MESSAGE_DISPATCH_TYPE_TO_SELECTED;
+			params.ToSelected.EditorId = *editorId;
+		}
 		nosEngine.SendEditorMessage(&params);
 	}
 
-	void UpdateDeviceNamedValues()
+	void UpdateDeviceNamedValuesUnlocked()
 	{
 		TUpdateNamedValues update;
 		std::unordered_map<std::string, std::vector<DeviceProperties>> map;
@@ -337,6 +348,11 @@ nosResult NOSAPI_CALL UnloadSubsystem()
 	return NOS_RESULT_SUCCESS;
 }
 
+void NOSAPI_CALL OnEditorConnected(uint64_t editorId)
+{
+	DeviceManager::GetInstance().SendDeviceListToEditor(editorId);
+}
+	
 extern "C"
 {
 NOSAPI_ATTR nosResult NOSAPI_CALL nosExportSubsystem(nosSubsystemFunctions* subsystemFunctions)
@@ -344,6 +360,7 @@ NOSAPI_ATTR nosResult NOSAPI_CALL nosExportSubsystem(nosSubsystemFunctions* subs
 	subsystemFunctions->OnRequest = Export;
 	subsystemFunctions->Initialize = Initialize;
 	subsystemFunctions->OnPreUnloadSubsystem = UnloadSubsystem;
+	subsystemFunctions->OnEditorConnected = OnEditorConnected;
 	return NOS_RESULT_SUCCESS;
 }
 }

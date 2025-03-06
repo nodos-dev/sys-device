@@ -233,20 +233,13 @@ private:
 		std::unordered_map<std::string, std::unordered_map<std::string, uint32_t>> modelIndices;
 		for (auto& [vendor, devices] : map)
 		{
-			for (auto& device : devices)
-			{
-				modelIndices[vendor][device.ModelName.AsString()]++;
-			}
-		}
-		for (auto& [vendor, devices] : map)
-		{
 			fb::TNamedValues namedValues;
 			namedValues.name = GetDeviceListName(vendor);
 			for (auto& device : devices)
 			{
 				fb::TNamedValue value;
 				auto modelNameStr = device.ModelName.AsString();
-				value.value_name = modelNameStr + " - " + std::to_string(modelIndices[vendor][modelNameStr]);
+				value.value_name = modelNameStr + " - " + std::to_string(++modelIndices[vendor][modelNameStr]);
 				value.type_name = NOS_DEVICE_SUBSYSTEM_NAME ".DeviceInfo";
 				auto buf = device.GetDeviceInfoPinValue();
 				value.pin_value = buf;

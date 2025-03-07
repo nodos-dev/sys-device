@@ -2,7 +2,7 @@
     "info": {
         "id": {
             "name": "nos.sys.device",
-            "version": "0.3.2"
+            "version": "0.3.3"
         },
         "description": "Nodos subsystem for device management",
         "display_name": "Device",
@@ -10,7 +10,8 @@
         "category": "Device"
     },
     "custom_types": [
-        "Config/Device.fbs"
+        "Config/Device.fbs",
+		"Config/EditorEvents.fbs"
     ],
     "named_values": [],
     "binary_path": "Binaries/nosDeviceSubsystem"

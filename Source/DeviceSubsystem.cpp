@@ -1,5 +1,5 @@
 // Copyright MediaZ Teknoloji A.S. All Rights Reserved.
-#include <Nodos/SubsystemAPI.h>
+#include <Nodos/PluginAPI.h>
 #include <Nodos/Name.hpp>
 #include <Nodos/Helpers.hpp>
 
@@ -7,7 +7,7 @@
 #include "nosDeviceSubsystem/Device_generated.h"
 #include "nosDeviceSubsystem/EditorEvents_generated.h"
 
-NOS_INIT_WITH_MIN_REQUIRED_MINOR(0); // APITransition: Reminder that this should be reset after next major!
+NOS_INIT() 
 
 NOS_BEGIN_IMPORT_DEPS()
 NOS_END_IMPORT_DEPS()
@@ -331,16 +331,6 @@ nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 	return NOS_RESULT_SUCCESS;
 }
 
-nosResult NOSAPI_CALL Initialize()
-{
-	return NOS_RESULT_SUCCESS;
-}
-
-nosResult NOSAPI_CALL UnloadSubsystem()
-{
-	return NOS_RESULT_SUCCESS;
-}
-
 void NOSAPI_CALL OnEditorConnected(uint64_t editorId)
 {
 	DeviceManager::GetInstance().SendDeviceListToEditor(editorId);
@@ -348,11 +338,9 @@ void NOSAPI_CALL OnEditorConnected(uint64_t editorId)
 	
 extern "C"
 {
-NOSAPI_ATTR nosResult NOSAPI_CALL nosExportSubsystem(nosSubsystemFunctions* subsystemFunctions)
+NOSAPI_ATTR nosResult NOSAPI_CALL nosExportPlugin(nosPluginFunctions* subsystemFunctions)
 {
 	subsystemFunctions->OnRequest = Export;
-	subsystemFunctions->Initialize = Initialize;
-	subsystemFunctions->OnPreUnloadSubsystem = UnloadSubsystem;
 	subsystemFunctions->OnEditorConnected = OnEditorConnected;
 	return NOS_RESULT_SUCCESS;
 }

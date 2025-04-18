@@ -51,13 +51,13 @@ typedef struct nosDeviceSubsystem {
 // Make sure these are same with nossys file.
 #define NOS_DEVICE_SUBSYSTEM_NAME "nos.sys.device"
 #define NOS_DEVICE_SUBSYSTEM_VERSION_MAJOR 0
-#define NOS_DEVICE_SUBSYSTEM_VERSION_MINOR 2
+#define NOS_DEVICE_SUBSYSTEM_VERSION_MINOR 10
 
-extern struct nosModuleInfo nosDeviceSubsystemModuleInfo;
+extern struct nosPluginInfo nosDeviceSubsystemModuleInfo;
 extern nosDeviceSubsystem* nosDevice;
 
-#define NOS_DEVICE_SUBSYSTEM_INIT()         \
-	nosModuleInfo nosDeviceSubsystemModuleInfo; \
+#define NOS_DEVICE_SUBSYSTEM_INIT()         	\
+	nosPluginInfo nosDeviceSubsystemModuleInfo; \
 	nosDeviceSubsystem* nosDevice = nullptr;
 
 #define NOS_DEVICE_SUBSYSTEM_IMPORT() NOS_IMPORT_DEP(NOS_DEVICE_SUBSYSTEM_NAME, nosDeviceSubsystemModuleInfo, nosDevice)

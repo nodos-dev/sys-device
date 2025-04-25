@@ -14,7 +14,7 @@ NOS_END_IMPORT_DEPS()
 
 namespace nos::sys::device
 {
-std::unordered_map<uint32_t, nosDeviceSubsystem*> GExportedSubsystemVersions;
+std::unordered_map<uint32_t, nosDeviceSubsystem*> GExportedAPIVersions;
 
 struct DeviceProperties
 {
@@ -312,8 +312,8 @@ void NOSAPI_CALL GetDevicesWithVendor(nosName vendorName, nosDeviceId* outDevice
 
 nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 {
-	auto it = GExportedSubsystemVersions.find(minorVersion);
-	if (it != GExportedSubsystemVersions.end())
+	auto it = GExportedAPIVersions.find(minorVersion);
+	if (it != GExportedAPIVersions.end())
 	{
 		*outSubsystemContext = it->second;
 		return NOS_RESULT_SUCCESS;
@@ -327,7 +327,7 @@ nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 	subsystem->GetDeviceInfo = GetDeviceInfo;
 	subsystem->GetDevicesWithVendor = GetDevicesWithVendor;
 	*outSubsystemContext = subsystem;
-	GExportedSubsystemVersions[minorVersion] = subsystem;
+	GExportedAPIVersions[minorVersion] = subsystem;
 	return NOS_RESULT_SUCCESS;
 }
 
@@ -340,7 +340,7 @@ extern "C"
 {
 NOSAPI_ATTR nosResult NOSAPI_CALL nosExportPlugin(nosPluginFunctions* subsystemFunctions)
 {
-	subsystemFunctions->OnRequest = Export;
+	subsystemFunctions->OnRequestAPI = Export;
 	subsystemFunctions->OnEditorConnected = OnEditorConnected;
 	return NOS_RESULT_SUCCESS;
 }

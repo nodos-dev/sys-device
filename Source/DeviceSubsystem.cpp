@@ -254,8 +254,15 @@ private:
 			unknown.value_name = "Unknown";
 			unknown.type_name = NOS_DEVICE_SUBSYSTEM_NAME ".DeviceInfo";
 			namedValues.values.emplace_back(std::make_unique<fb::TNamedValue>(std::move(unknown)));
-			update.updated_values.emplace_back(std::make_unique<fb::TNamedValues>(std::move(namedValues)));
+			update.added_or_updated.emplace_back(std::make_unique<fb::TNamedValues>(std::move(namedValues)));
 		}
+		std::unordered_set<std::string> newNvNames;
+		for (auto& newNv : update.added_or_updated)
+			newNvNames.insert(newNv->name);
+		for (auto& cur : NamedValueNames)
+			if (!newNvNames.contains(cur))
+				update.deleted.push_back(cur);
+		NamedValueNames = newNvNames;
 		SendNamedValueUpdates(update);
 	}
 
@@ -264,6 +271,7 @@ private:
 	std::shared_mutex DevicesMutex;
 	std::unordered_map<nosDeviceId, DeviceProperties> Devices;
 	nosDeviceId NextDeviceId = 0;
+	std::unordered_set<std::string> NamedValueNames;
 };
 
 DeviceManager DeviceManager::Instance{};

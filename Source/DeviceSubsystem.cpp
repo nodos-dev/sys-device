@@ -21,6 +21,7 @@ struct DeviceProperties
 	nosDeviceId Id;
 
 	// Characteristics
+	nos::Name OwnerPluginName; // The plugin that registered the device
 	nos::Name VendorName;
 	nos::Name ModelName;
 	uint64_t TopologicalId;
@@ -34,7 +35,7 @@ struct DeviceProperties
 	std::unordered_map<nos::Name, std::string> Properties; // Additional properties
 
 	DeviceProperties() = default;
-	DeviceProperties(nosDeviceId id, const nosRegisterDeviceParams& params)
+	DeviceProperties(nosDeviceId id, const nosRegisterDeviceParams& params, nos::Name pluginName)
 		: Id (id)
 		, VendorName(params.Device.VendorName)
 		, ModelName(params.Device.ModelName)
@@ -43,6 +44,7 @@ struct DeviceProperties
 		, TopologicalId(params.Device.TopologicalId)
 		, DisplayName(params.DisplayName)
 		, Handle(params.Handle)
+		, OwnerPluginName(pluginName)
 	{}
 
 	nos::Table<DeviceInfo> GetDeviceInfoPinValue() const
@@ -63,12 +65,12 @@ struct DeviceManager
 	DeviceManager& operator=(const DeviceManager&) = delete;
 	static DeviceManager& GetInstance() { return Instance; }
 
-	nosResult RegisterDevice(const nosRegisterDeviceParams& params, nosDeviceId* outDeviceId)
+	nosResult RegisterDevice(const nosRegisterDeviceParams& params, nos::Name callingPluginName, nosDeviceId* outDeviceId)
 	{
 		// TODO: Validate
 		std::unique_lock lock(DevicesMutex);
 		++NextDeviceId;
-		DeviceProperties props(NextDeviceId, params);
+		DeviceProperties props(NextDeviceId, params, callingPluginName);
 		for (uint32_t i = 0; i < params.Device.PropertyCount; i++) {
 			props.Properties[params.Device.Properties[i].Name] = params.Device.Properties[i].Value;
 		}
@@ -229,7 +231,7 @@ private:
 			for (auto& property : props.Properties) {
 				properties.push_back(CreateDevicePropertyDirect(fbb, property.first.AsCStr(), property.second.c_str()));
 			}
-			auto deviceInfo = CreateDeviceInfoDirect(fbb, props.VendorName.AsCStr(),
+			auto deviceInfo = CreateDeviceInfoDirect(fbb, props.OwnerPluginName.AsCStr(), props.VendorName.AsCStr(),
 				props.ModelName.AsCStr(), props.TopologicalId, props.SerialNumber.AsCStr(), (DeviceFlags)props.Flags, &properties);
 			devices.push_back(deviceInfo);
 		}
@@ -307,7 +309,12 @@ nosResult NOSAPI_CALL RegisterDevice(const nosRegisterDeviceParams* params, nosD
 {
 	if (!params || !outDeviceId)
 		return NOS_RESULT_INVALID_ARGUMENT;
-	return DeviceManager::GetInstance().RegisterDevice(*params, outDeviceId);
+
+	nosPluginInfo callingPlugin{};
+	if (nosEngine.GetCallingPlugin(&callingPlugin) != NOS_RESULT_SUCCESS)
+		nosEngine.LogW("RegisterDevice: Failed to get calling plugin info.");
+
+	return DeviceManager::GetInstance().RegisterDevice(*params, callingPlugin.Id.Name, outDeviceId);
 }
 
 nosResult NOSAPI_CALL UnregisterDevice(nosDeviceId deviceId)

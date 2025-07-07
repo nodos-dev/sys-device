@@ -82,19 +82,8 @@ extern nosDeviceSubsystem* nosDevice;
 #include "Device_generated.h"
 namespace nos::sys::device
 {
-inline nosDeviceInfo ConvertDeviceInfoWithoutProperties(DeviceInfo const& info)
-{
-	return {
-		.VendorName = nos::Name(info.vendor_name() ? info.vendor_name()->string_view() : ""),
-		.ModelName = nos::Name(info.model_name() ? info.model_name()->string_view() : ""),
-		.TopologicalId = info.topological_id(),
-		.SerialNumber = nos::Name(info.serial_number() ? info.serial_number()->string_view() : ""),
-		.Flags = static_cast<nosDeviceFlags>(info.flags()),
-		.PropertyCount = 0
-	};
-}
 
-inline nosDeviceInfo ConvertDeviceInfoWithoutProperties(TDeviceInfo const& info)
+inline nosDeviceInfo ConvertDeviceInfo(TDeviceInfo const& info)
 {
 	return {
 		.VendorName = nos::Name(info.vendor_name),
@@ -114,8 +103,6 @@ inline TDeviceInfo ConvertDeviceInfo(nosDeviceInfo const& info)
 	dev.topological_id = info.TopologicalId;
 	dev.serial_number = nos::Name(info.SerialNumber).AsString();
 	dev.flags = static_cast<nos::sys::device::DeviceFlags>(info.Flags);
-	for (uint32_t i = 0; i < info.PropertyCount; ++i)
-		dev.properties.push_back(std::make_unique<TDeviceProperty>(TDeviceProperty{ .name = nos::Name(info.Properties[i].Name).AsString(), .value = info.Properties[i].Value }));
 	return dev;
 }
 

@@ -12,12 +12,15 @@ table DeviceProperty{
 }
 
 table DeviceInfo {
-    plugin_name: string;
     vendor_name: string;
     model_name: string;
     topological_id: uint64;
     serial_number: string;
     flags: DeviceFlags;
+}
+
+table DeviceExtraInfo {
+    plugin_name: string;
     properties: [DeviceProperty];
 }
 

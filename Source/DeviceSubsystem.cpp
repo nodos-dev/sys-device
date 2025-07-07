@@ -225,17 +225,19 @@ private:
 	{
 		flatbuffers::FlatBufferBuilder fbb;
 		std::vector<flatbuffers::Offset<DeviceInfo>> devices;
+		std::vector<flatbuffers::Offset<DeviceExtraInfo>> deviceExtras;
 		for (auto& [id, props] : Devices)
 		{
 			std::vector<flatbuffers::Offset<DeviceProperty>> properties;
 			for (auto& property : props.Properties) {
 				properties.push_back(CreateDevicePropertyDirect(fbb, property.first.AsCStr(), property.second.c_str()));
 			}
-			auto deviceInfo = CreateDeviceInfoDirect(fbb, props.OwnerPluginName.AsCStr(), props.VendorName.AsCStr(),
-				props.ModelName.AsCStr(), props.TopologicalId, props.SerialNumber.AsCStr(), (DeviceFlags)props.Flags, &properties);
-			devices.push_back(deviceInfo);
+			devices.push_back(CreateDeviceInfoDirect(fbb, props.VendorName.AsCStr(),
+				props.ModelName.AsCStr(), props.TopologicalId, props.SerialNumber.AsCStr(), (DeviceFlags)props.Flags));
+			deviceExtras.push_back(CreateDeviceExtraInfoDirect(fbb, props.OwnerPluginName.AsCStr(), &properties));
+			
 		}
-		auto offset = editor::CreateDeviceListDirect(fbb, &devices);
+		auto offset = editor::CreateDeviceListDirect(fbb, &devices, &deviceExtras);
 		auto event  = editor::CreateSubsystemEvent(fbb, editor::SubsystemEventUnion::DeviceList, offset.Union());
 		fbb.Finish(event);
 		nos::Buffer buf = fbb.Release();

@@ -71,8 +71,8 @@ struct DeviceManager
 		std::unique_lock lock(DevicesMutex);
 		++NextDeviceId;
 		DeviceProperties props(NextDeviceId, params, callingPluginName);
-		for (uint32_t i = 0; i < params.Device.PropertyCount; i++) {
-			props.Properties[params.Device.Properties[i].Name] = params.Device.Properties[i].Value;
+		for (uint32_t i = 0; i < params.PropertyCount; i++) {
+			props.Properties[params.Properties[i].Name] = params.Properties[i].Value;
 		}
 
 		*outDeviceId = NextDeviceId;

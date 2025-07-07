@@ -34,14 +34,14 @@ typedef struct nosDeviceInfo
 	uint64_t TopologicalId;
 	nosName SerialNumber;
 	nosDeviceFlags Flags;
-	nosDeviceProperty* Properties;
-	uint64_t PropertyCount; // Number of properties in the Properties array
 } nosDeviceInfo;
 
 typedef struct nosRegisterDeviceParams {
 	nosDeviceInfo Device;
 	nosName DisplayName;
 	uint64_t Handle; // Handle used by module to access to the device
+	nosDeviceProperty* Properties;
+	uint64_t PropertyCount; // Number of properties in the Properties array
 } nosRegisterDeviceParams;
 
 typedef struct nosDeviceSubsystem {
@@ -90,8 +90,7 @@ inline nosDeviceInfo ConvertDeviceInfo(TDeviceInfo const& info)
 		.ModelName = nos::Name(info.model_name),
 		.TopologicalId = info.topological_id,
 		.SerialNumber = nos::Name(info.serial_number),
-		.Flags = static_cast<nosDeviceFlags>(info.flags),
-		.PropertyCount = 0
+		.Flags = static_cast<nosDeviceFlags>(info.flags)
 	};
 }
 

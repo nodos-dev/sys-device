@@ -6,12 +6,22 @@ enum DeviceFlags : uint(bit_flags) {
 	VIDEO_IO = 2,
 }
 
+table DeviceProperty{
+    name: string (required);
+    value: string;
+}
+
 table DeviceInfo {
     vendor_name: string;
     model_name: string;
     topological_id: uint64;
     serial_number: string;
     flags: DeviceFlags;
+}
+
+table DeviceExtraInfo {
+    plugin_name: string;
+    properties: [DeviceProperty];
 }
 
 struct RuntimeDeviceId {

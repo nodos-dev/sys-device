@@ -21,6 +21,12 @@ typedef enum nosDeviceFlags {
 	NOS_DEVICE_FLAG_VIDEO_IO = (1 << 2),
 } nosDeviceFlags;
 
+typedef struct nosDeviceProperty
+{
+	nosName Name;
+	const char* Value;
+} nosDeviceProperty;
+
 typedef struct nosDeviceInfo
 {
 	nosName VendorName;
@@ -34,6 +40,8 @@ typedef struct nosRegisterDeviceParams {
 	nosDeviceInfo Device;
 	nosName DisplayName;
 	uint64_t Handle; // Handle used by module to access to the device
+	nosDeviceProperty* Properties;
+	uint64_t PropertyCount; // Number of properties in the Properties array
 } nosRegisterDeviceParams;
 
 typedef struct nosDeviceSubsystem {
@@ -44,6 +52,7 @@ typedef struct nosDeviceSubsystem {
 	nosResult (NOSAPI_CALL* GetDeviceHandle)(nosDeviceId deviceId, uint64_t* outHandle);
 	nosResult (NOSAPI_CALL* GetDeviceInfo)(nosDeviceId deviceId, nosDeviceInfo* outInfo);
 	void (NOSAPI_CALL* GetDevicesWithVendor)(nosName vendorName, nosDeviceId* outDevices, uint64_t* outCount);
+	nosResult (NOSAPI_CALL* GetDeviceProperties)(nosDeviceId deviceId, nosDeviceProperty* outProperties, uint64_t* outPropertiesCount);
 } nosDeviceSubsystem;
 
 #pragma region Helper Declarations & Macros
@@ -51,7 +60,7 @@ typedef struct nosDeviceSubsystem {
 // Make sure these are same with nossys file.
 #define NOS_DEVICE_SUBSYSTEM_NAME "nos.sys.device"
 #define NOS_DEVICE_SUBSYSTEM_VERSION_MAJOR 0
-#define NOS_DEVICE_SUBSYSTEM_VERSION_MINOR 10
+#define NOS_DEVICE_SUBSYSTEM_VERSION_MINOR 11
 
 extern struct nosPluginInfo nosDeviceSubsystemModuleInfo;
 extern nosDeviceSubsystem* nosDevice;
@@ -73,16 +82,6 @@ extern nosDeviceSubsystem* nosDevice;
 #include "Device_generated.h"
 namespace nos::sys::device
 {
-inline nosDeviceInfo ConvertDeviceInfo(DeviceInfo const& info)
-{
-	return {
-		.VendorName = nos::Name(info.vendor_name() ? info.vendor_name()->string_view() : ""),
-		.ModelName = nos::Name(info.model_name() ? info.model_name()->string_view() : ""),
-		.TopologicalId = info.topological_id(),
-		.SerialNumber = nos::Name(info.serial_number() ? info.serial_number()->string_view() : ""),
-		.Flags = static_cast<nosDeviceFlags>(info.flags()),
-	};
-}
 
 inline nosDeviceInfo ConvertDeviceInfo(TDeviceInfo const& info)
 {
@@ -91,24 +90,26 @@ inline nosDeviceInfo ConvertDeviceInfo(TDeviceInfo const& info)
 		.ModelName = nos::Name(info.model_name),
 		.TopologicalId = info.topological_id,
 		.SerialNumber = nos::Name(info.serial_number),
-		.Flags = static_cast<nosDeviceFlags>(info.flags),
+		.Flags = static_cast<nosDeviceFlags>(info.flags)
 	};
 }
 
 inline TDeviceInfo ConvertDeviceInfo(nosDeviceInfo const& info)
 {
-	return {
-		.vendor_name = nos::Name(info.VendorName).AsString(),
-		.model_name = nos::Name(info.ModelName).AsString(),
-		.topological_id = info.TopologicalId,
-		.serial_number = nos::Name(info.SerialNumber).AsString(),
-		.flags = static_cast<nos::sys::device::DeviceFlags>(info.Flags),
-	};
+	TDeviceInfo dev{};
+	dev.vendor_name = nos::Name(info.VendorName).AsString();
+	dev.model_name = nos::Name(info.ModelName).AsString();
+	dev.topological_id = info.TopologicalId;
+	dev.serial_number = nos::Name(info.SerialNumber).AsString();
+	dev.flags = static_cast<nos::sys::device::DeviceFlags>(info.Flags);
+	return dev;
 }
 
 inline TDeviceInfo NoneDeviceInfo()
 {
-	return {.vendor_name = "None"};
+	TDeviceInfo dev{};
+	dev.vendor_name = "None";
+	return dev;
 }
 
 inline std::string GetDeviceListNameForVendor(nos::Name vendorName)

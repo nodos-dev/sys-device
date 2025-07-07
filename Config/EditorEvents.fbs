@@ -12,4 +12,5 @@ table SubsystemEvent {
 
 table DeviceList {
     devices: [nos.sys.device.DeviceInfo];
+	extra_info: [nos.sys.device.DeviceExtraInfo];
 }

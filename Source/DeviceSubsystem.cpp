@@ -21,6 +21,7 @@ struct DeviceProperties
 	nosDeviceId Id;
 
 	// Characteristics
+	nos::Name OwnerPluginName; // The plugin that registered the device
 	nos::Name VendorName;
 	nos::Name ModelName;
 	uint64_t TopologicalId;
@@ -31,8 +32,10 @@ struct DeviceProperties
 	nos::Name DisplayName;
 	uint64_t Handle;
 
+	std::unordered_map<nos::Name, std::string> Properties; // Additional properties
+
 	DeviceProperties() = default;
-	DeviceProperties(nosDeviceId id, const nosRegisterDeviceParams& params)
+	DeviceProperties(nosDeviceId id, const nosRegisterDeviceParams& params, nos::Name pluginName)
 		: Id (id)
 		, VendorName(params.Device.VendorName)
 		, ModelName(params.Device.ModelName)
@@ -41,6 +44,7 @@ struct DeviceProperties
 		, TopologicalId(params.Device.TopologicalId)
 		, DisplayName(params.DisplayName)
 		, Handle(params.Handle)
+		, OwnerPluginName(pluginName)
 	{}
 
 	nos::Table<DeviceInfo> GetDeviceInfoPinValue() const
@@ -61,12 +65,16 @@ struct DeviceManager
 	DeviceManager& operator=(const DeviceManager&) = delete;
 	static DeviceManager& GetInstance() { return Instance; }
 
-	nosResult RegisterDevice(const nosRegisterDeviceParams& params, nosDeviceId* outDeviceId)
+	nosResult RegisterDevice(const nosRegisterDeviceParams& params, nos::Name callingPluginName, nosDeviceId* outDeviceId)
 	{
 		// TODO: Validate
 		std::unique_lock lock(DevicesMutex);
 		++NextDeviceId;
-		DeviceProperties props(NextDeviceId, params);
+		DeviceProperties props(NextDeviceId, params, callingPluginName);
+		for (uint32_t i = 0; i < params.PropertyCount; i++) {
+			props.Properties[params.Properties[i].Name] = params.Properties[i].Value;
+		}
+
 		*outDeviceId = NextDeviceId;
 		Devices[*outDeviceId] = std::move(props);
 		OnDeviceListUpdated();
@@ -181,6 +189,23 @@ struct DeviceManager
 			std::copy(devices.begin(), devices.end(), outDevices);
 	}
 
+	nosResult GetDeviceProperties(nosDeviceId deviceId, nosDeviceProperty* outProperties, uint64_t* outPropertiesCount) {
+		std::shared_lock lock(DevicesMutex);
+		auto it = Devices.find(deviceId);
+		if (it == Devices.end())
+			return NOS_RESULT_NOT_FOUND;
+		if (outPropertiesCount)
+			*outPropertiesCount = it->second.Properties.size();
+		if (outProperties) {
+			uint32_t i = 0;
+			for (auto& [name, val] : it->second.Properties) {
+				outProperties[i].Name = nos::Name(name);
+				outProperties[i].Value = val.c_str();
+			}
+		}
+		return NOS_RESULT_SUCCESS;
+	}
+
 	void SendDeviceListToEditor(uint64_t editorId)
 	{
 		std::shared_lock lock(DevicesMutex);
@@ -200,13 +225,19 @@ private:
 	{
 		flatbuffers::FlatBufferBuilder fbb;
 		std::vector<flatbuffers::Offset<DeviceInfo>> devices;
+		std::vector<flatbuffers::Offset<DeviceExtraInfo>> deviceExtras;
 		for (auto& [id, props] : Devices)
 		{
-			auto deviceInfo = CreateDeviceInfoDirect(fbb, props.VendorName.AsCStr(),
-				props.ModelName.AsCStr(), props.TopologicalId, props.SerialNumber.AsCStr(), (DeviceFlags)props.Flags);
-			devices.push_back(deviceInfo);
+			std::vector<flatbuffers::Offset<DeviceProperty>> properties;
+			for (auto& property : props.Properties) {
+				properties.push_back(CreateDevicePropertyDirect(fbb, property.first.AsCStr(), property.second.c_str()));
+			}
+			devices.push_back(CreateDeviceInfoDirect(fbb, props.VendorName.AsCStr(),
+				props.ModelName.AsCStr(), props.TopologicalId, props.SerialNumber.AsCStr(), (DeviceFlags)props.Flags));
+			deviceExtras.push_back(CreateDeviceExtraInfoDirect(fbb, props.OwnerPluginName.AsCStr(), &properties));
+			
 		}
-		auto offset = editor::CreateDeviceListDirect(fbb, &devices);
+		auto offset = editor::CreateDeviceListDirect(fbb, &devices, &deviceExtras);
 		auto event  = editor::CreateSubsystemEvent(fbb, editor::SubsystemEventUnion::DeviceList, offset.Union());
 		fbb.Finish(event);
 		nos::Buffer buf = fbb.Release();
@@ -280,7 +311,12 @@ nosResult NOSAPI_CALL RegisterDevice(const nosRegisterDeviceParams* params, nosD
 {
 	if (!params || !outDeviceId)
 		return NOS_RESULT_INVALID_ARGUMENT;
-	return DeviceManager::GetInstance().RegisterDevice(*params, outDeviceId);
+
+	nosPluginInfo callingPlugin{};
+	if (nosEngine.GetCallingPlugin(&callingPlugin) != NOS_RESULT_SUCCESS)
+		nosEngine.LogW("RegisterDevice: Failed to get calling plugin info.");
+
+	return DeviceManager::GetInstance().RegisterDevice(*params, callingPlugin.Id.Name, outDeviceId);
 }
 
 nosResult NOSAPI_CALL UnregisterDevice(nosDeviceId deviceId)
@@ -318,6 +354,10 @@ void NOSAPI_CALL GetDevicesWithVendor(nosName vendorName, nosDeviceId* outDevice
 	DeviceManager::GetInstance().GetDevicesWithVendor(nos::Name(vendorName), outDevices, outCount);
 }
 
+nosResult NOSAPI_CALL GetDeviceProperties(nosDeviceId deviceId, nosDeviceProperty* outProperties, uint64_t* outPropertiesCount) {
+	return DeviceManager::GetInstance().GetDeviceProperties(deviceId, outProperties, outPropertiesCount);
+}
+
 nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 {
 	auto it = GExportedAPIVersions.find(minorVersion);
@@ -327,13 +367,24 @@ nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 		return NOS_RESULT_SUCCESS;
 	}
 	auto* subsystem = new nosDeviceSubsystem();
-	subsystem->RegisterDevice = RegisterDevice;
+	if (minorVersion < 11) {
+		subsystem->RegisterDevice = [](const nosRegisterDeviceParams* params, nosDeviceId* outDeviceId) -> nosResult {
+			nosRegisterDeviceParams updatedParams{};
+			updatedParams.Device = params->Device;
+			updatedParams.DisplayName = params->DisplayName;
+			updatedParams.Handle = params->Handle;
+			return RegisterDevice(&updatedParams, outDeviceId);
+			};
+	}
+	else
+		subsystem->RegisterDevice = RegisterDevice;
 	subsystem->UnregisterDevice = UnregisterDevice;
 	subsystem->GetSuitableDevice = GetSuitableDevice;
 	subsystem->GetDeviceListNameForVendor = GetDeviceListName;
 	subsystem->GetDeviceHandle = GetDeviceHandle;
 	subsystem->GetDeviceInfo = GetDeviceInfo;
 	subsystem->GetDevicesWithVendor = GetDevicesWithVendor;
+	subsystem->GetDeviceProperties = GetDeviceProperties;
 	*outSubsystemContext = subsystem;
 	GExportedAPIVersions[minorVersion] = subsystem;
 	return NOS_RESULT_SUCCESS;

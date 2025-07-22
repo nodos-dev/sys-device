@@ -1,7 +1,7 @@
 // Copyright MediaZ Teknoloji A.S. All Rights Reserved.
 #include <Nodos/PluginAPI.h>
 #include <Nodos/Name.hpp>
-#include <Nodos/Helpers.hpp>
+#include <Nodos/Plugin.hpp>
 
 #include "nosDeviceSubsystem/nosDeviceSubsystem.h"
 #include "nosDeviceSubsystem/Device_generated.h"

@@ -2,7 +2,7 @@
     "info": {
         "id": {
             "name": "nos.sys.device",
-            "version": "0.11.0"
+            "version": "0.11.1"
         },
         "description": "Nodos subsystem for device management",
         "display_name": "Device",

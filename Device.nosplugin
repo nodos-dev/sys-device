@@ -2,17 +2,12 @@
     "info": {
         "id": {
             "name": "nos.sys.device",
-            "version": "0.11.1"
+            "version": "1.0.0"
         },
         "description": "Nodos subsystem for device management",
         "display_name": "Device",
         "dependencies": [],
         "category": "Device"
     },
-    "custom_types": [
-        "Config/Device.fbs",
-		"Config/EditorEvents.fbs"
-    ],
-    "named_values": [],
     "binary_path": "Binaries/nosDeviceSubsystem"
 }

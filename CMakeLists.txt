@@ -12,7 +12,7 @@ endif()
 add_compile_definitions(NOS_DISABLE_DEPRECATED)
 nos_find_plugin_sdk("39.0.0" NOS_PLUGIN_SDK_TARGET NOS_SDK_DIR)
 
-nos_generate_flatbuffers("${CMAKE_CURRENT_SOURCE_DIR}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Include/nosDeviceSubsystem" "cpp" "" nosDeviceSubsystem_generated)
+nos_generate_flatbuffers("${CMAKE_CURRENT_SOURCE_DIR}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Include/nosDeviceSubsystem" "cpp" "" nosDeviceSubsystem_generated)
 set(DEPENDENCIES nosDeviceSubsystem_generated ${NOS_PLUGIN_SDK_TARGET})
 
 nos_add_plugin("nosDeviceSubsystem" "${DEPENDENCIES}" "")

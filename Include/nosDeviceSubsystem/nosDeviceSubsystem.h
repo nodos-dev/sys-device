@@ -59,8 +59,8 @@ typedef struct nosDeviceSubsystem {
 
 // Make sure these are same with nossys file.
 #define NOS_DEVICE_SUBSYSTEM_NAME "nos.sys.device"
-#define NOS_DEVICE_SUBSYSTEM_VERSION_MAJOR 0
-#define NOS_DEVICE_SUBSYSTEM_VERSION_MINOR 11
+#define NOS_DEVICE_SUBSYSTEM_VERSION_MAJOR 1
+#define NOS_DEVICE_SUBSYSTEM_VERSION_MINOR 1
 
 extern struct nosPluginInfo nosDeviceSubsystemModuleInfo;
 extern nosDeviceSubsystem* nosDevice;

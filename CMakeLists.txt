@@ -10,7 +10,7 @@ if (NOT WITH_NODOS_WORKSPACE)
 endif()
 
 add_compile_definitions(NOS_DISABLE_DEPRECATED)
-nos_find_plugin_sdk("40.0.0" NOS_PLUGIN_SDK_TARGET NOS_SDK_DIR)
+nos_find_plugin_sdk("41.0" NOS_PLUGIN_SDK_TARGET NOS_SDK_DIR)
 
 nos_generate_flatbuffers("${CMAKE_CURRENT_SOURCE_DIR}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Include/nosDeviceSubsystem" "cpp" "" nosDeviceSubsystem_generated)
 set(DEPENDENCIES nosDeviceSubsystem_generated ${NOS_PLUGIN_SDK_TARGET})

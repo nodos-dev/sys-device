@@ -242,6 +242,7 @@ private:
 		fbb.Finish(event);
 		nos::Buffer buf = fbb.Release();
 		nosSendEditorMessageParams params {
+			.TypeName = NOS_NAME("nos.sys.device.editor.SubsystemEvent"),
 			.Message = buf,
 			.DispatchType = NOS_EDITOR_MESSAGE_DISPATCH_TYPE_BROADCAST,
 		};

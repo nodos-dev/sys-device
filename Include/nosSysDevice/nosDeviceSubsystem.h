@@ -79,7 +79,7 @@ extern nosDeviceSubsystem* nosDevice;
 
 #pragma region C++ Helpers
 #if __cplusplus
-#include "Device_generated.h"
+#include "nosSysDevice/Device_generated.h"
 namespace nos::sys::device
 {
 

@@ -10,5 +10,5 @@
         "category": "Device"
     },
     "binary_path": "Binaries/nosSysDevice",
-    "sdk_dependency": "40.0"
+    "sdk_version": "40.0"
 }

@@ -3,9 +3,9 @@
 #include <Nodos/Name.hpp>
 #include <Nodos/Plugin.hpp>
 
-#include "nosDeviceSubsystem/nosDeviceSubsystem.h"
-#include "nosDeviceSubsystem/Device_generated.h"
-#include "nosDeviceSubsystem/EditorEvents_generated.h"
+#include "nosSysDevice/nosDeviceSubsystem.h"
+#include "nosSysDevice/Device_generated.h"
+#include "nosSysDevice/EditorEvents_generated.h"
 
 NOS_INIT() 
 

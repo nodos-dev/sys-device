@@ -9,5 +9,6 @@
         "dependencies": [],
         "category": "Device"
     },
-    "binary_path": "Binaries/nosDeviceSubsystem"
+    "binary_path": "Binaries/nosSysDevice",
+    "sdk_version": "40.0"
 }

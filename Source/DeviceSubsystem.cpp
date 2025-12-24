@@ -3,9 +3,9 @@
 #include <Nodos/Name.hpp>
 #include <Nodos/Plugin.hpp>
 
-#include "nosDeviceSubsystem/nosDeviceSubsystem.h"
-#include "nosDeviceSubsystem/Device_generated.h"
-#include "nosDeviceSubsystem/EditorEvents_generated.h"
+#include "nosSysDevice/nosDeviceSubsystem.h"
+#include "nosSysDevice/Device_generated.h"
+#include "nosSysDevice/EditorEvents_generated.h"
 
 NOS_INIT() 
 
@@ -368,17 +368,7 @@ nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 		return NOS_RESULT_SUCCESS;
 	}
 	auto* subsystem = new nosDeviceSubsystem();
-	if (minorVersion < 11) {
-		subsystem->RegisterDevice = [](const nosRegisterDeviceParams* params, nosDeviceId* outDeviceId) -> nosResult {
-			nosRegisterDeviceParams updatedParams{};
-			updatedParams.Device = params->Device;
-			updatedParams.DisplayName = params->DisplayName;
-			updatedParams.Handle = params->Handle;
-			return RegisterDevice(&updatedParams, outDeviceId);
-			};
-	}
-	else
-		subsystem->RegisterDevice = RegisterDevice;
+	subsystem->RegisterDevice = RegisterDevice;
 	subsystem->UnregisterDevice = UnregisterDevice;
 	subsystem->GetSuitableDevice = GetSuitableDevice;
 	subsystem->GetDeviceListNameForVendor = GetDeviceListName;

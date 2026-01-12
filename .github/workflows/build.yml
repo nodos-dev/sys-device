@@ -48,7 +48,7 @@ concurrency:
 jobs:
   call-release-modules:
     name: Build
-    uses: nodos-dev/actions/.github/workflows/modules.yml@main
+    uses: nodos-dev/actions/.github/workflows/plugins.yml@main
     secrets:
       CI_TOKEN: ${{ secrets.CI_TOKEN }}
       SENTRY_TOKEN: ${{ secrets.SENTRY_TOKEN }}

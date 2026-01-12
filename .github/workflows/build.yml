@@ -14,11 +14,6 @@ on:
           - Only Changed
           - All Modules
           - None
-      nodos_sdk_version:
-        description: 'Nodos SDK Version'
-        required: false
-        default: ''
-        type: string
       clean:
         description: 'Clean build'
         required: false
@@ -60,7 +55,6 @@ jobs:
     with:
       ref_name: ${{ github.ref_name }}
       publish_mode: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.publish_mode || 'None' }}
-      nodos_sdk_version: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.nodos_sdk_version || '' }}
       clean: ${{ github.event_name == 'workflow_dispatch' && fromJson(github.event.inputs.clean) || false }}
       build_number: ${{ github.run_number }}
       sign_binaries: ${{github.event_name == 'workflow_dispatch' && fromJson(github.event.inputs.sign_binaries) || false }}

@@ -12,7 +12,7 @@ on:
         type: choice
         options:
           - Only Changed
-          - All Modules
+          - All Plugins
           - None
       clean:
         description: 'Clean build'
@@ -38,7 +38,7 @@ on:
 run-name: >-
   ${{ ((github.event_name == 'push') && format('Build Only: {0}', github.event.head_commit.message)) ||
       (github.event.inputs.publish_mode == 'Only Changed') && 'Build & Release' || 
-      (github.event.inputs.publish_mode == 'All Modules') && 'Build & Release (All)' ||
+      (github.event.inputs.publish_mode == 'All Plugins') && 'Build & Release (All)' ||
       'Build Only' }}
 
 concurrency:

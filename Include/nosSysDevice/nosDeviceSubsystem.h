@@ -53,6 +53,9 @@ typedef struct nosDeviceSubsystem {
 	nosResult (NOSAPI_CALL* GetDeviceInfo)(nosDeviceId deviceId, nosDeviceInfo* outInfo);
 	void (NOSAPI_CALL* GetDevicesWithVendor)(nosName vendorName, nosDeviceId* outDevices, uint64_t* outCount);
 	nosResult (NOSAPI_CALL* GetDeviceProperties)(nosDeviceId deviceId, nosDeviceProperty* outProperties, uint64_t* outPropertiesCount);
+	// TODO APITransition: Clean the design
+	nosResult (NOSAPI_CALL* AddDeviceTag)(nosDeviceId deviceId, nosName tag);
+	nosResult (NOSAPI_CALL* GetDeviceListNameForTag)(nosName vendorName, nosName tag, nosName* outName);
 } nosDeviceSubsystem;
 
 #pragma region Helper Declarations & Macros
@@ -116,6 +119,14 @@ inline std::string GetDeviceListNameForVendor(nos::Name vendorName)
 {
 	nosName outName{};
 	auto res = nosDevice->GetDeviceListNameForVendor(vendorName, &outName);
+	assert(res == NOS_RESULT_SUCCESS);
+	return nos::Name(outName).AsString();
+}
+
+inline std::string GetDeviceListNameForTag(nos::Name vendorName, nos::Name tag)
+{
+	nosName outName{};
+	auto res = nosDevice->GetDeviceListNameForTag(vendorName, tag, &outName);
 	assert(res == NOS_RESULT_SUCCESS);
 	return nos::Name(outName).AsString();
 }

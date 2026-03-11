@@ -16,6 +16,11 @@ namespace nos::sys::device
 {
 std::unordered_map<uint32_t, nosDeviceSubsystem*> GExportedAPIVersions;
 
+std::string GetSuffixForTag(nosName vendor, nosName tag)
+{
+	return nos::Name(vendor).AsString() + "." + nos::Name(tag).AsString();
+}
+
 struct DeviceProperties
 {
 	nosDeviceId Id;
@@ -31,6 +36,8 @@ struct DeviceProperties
 	// Other properties
 	nos::Name DisplayName;
 	uint64_t Handle;
+	
+	std::vector<nos::Name> Tags;
 
 	std::unordered_map<nos::Name, std::string> Properties; // Additional properties
 
@@ -142,9 +149,9 @@ struct DeviceManager
 		return NOS_RESULT_SUCCESS;
 	}
 
-	std::string GetDeviceListName(const std::string& vendorName)
+	std::string GetDeviceListNameForSuffix(const std::string& suffix)
 	{
-		std::string listName = NOS_DEVICE_SUBSYSTEM_NAME ".DeviceList." + vendorName;
+		std::string listName = NOS_DEVICE_SUBSYSTEM_NAME ".DeviceList." + suffix;
 		return listName;
 	}
 
@@ -211,6 +218,17 @@ struct DeviceManager
 		std::shared_lock lock(DevicesMutex);
 		SendDeviceListToEditorsUnlocked(editorId);
 	}
+	
+	bool AddTag(nosDeviceId id, nosName tag)
+	{
+		std::unique_lock lock(DevicesMutex);
+		auto it = Devices.find(id);
+		if (it == Devices.end())
+			return false;
+		it->second.Tags.push_back(tag);
+		 UpdateDeviceTagNamedValuesUnlocked();
+		return true;
+	}
 
 private:
 	DeviceManager() = default;
@@ -218,7 +236,7 @@ private:
 	void OnDeviceListUpdated()
 	{
 		SendDeviceListToEditorsUnlocked();
-		UpdateDeviceNamedValuesUnlocked();
+		UpdateDeviceVendorNamedValuesUnlocked();
 	}
 
 	void SendDeviceListToEditorsUnlocked(std::optional<uint64_t> editorId = std::nullopt)
@@ -254,7 +272,7 @@ private:
 		nosEngine.SendEditorMessage(&params);
 	}
 
-	void UpdateDeviceNamedValuesUnlocked()
+	void UpdateDeviceVendorNamedValuesUnlocked()
 	{
 		TUpdateNamedValues update;
 		std::unordered_map<std::string, std::vector<DeviceProperties>> map;
@@ -266,12 +284,57 @@ private:
 		for (auto& [vendor, devices] : map)
 		{
 			fb::TNamedValues namedValues;
-			namedValues.name = GetDeviceListName(vendor);
+			namedValues.name = GetDeviceListNameForSuffix(vendor);
 			for (auto& device : devices)
 			{
 				fb::TNamedValue value;
 				auto modelNameStr = device.ModelName.AsString();
 				value.value_name = modelNameStr + " - " + std::to_string(++modelIndices[vendor][modelNameStr]);
+				value.type_name = NOS_DEVICE_SUBSYSTEM_NAME ".DeviceInfo";
+				auto buf = device.GetDeviceInfoPinValue();
+				value.pin_value = buf;
+				namedValues.values.emplace_back(std::make_unique<fb::TNamedValue>(std::move(value)));
+			}
+			fb::TNamedValue none;
+			none.value_name = "None";
+			none.type_name = NOS_DEVICE_SUBSYSTEM_NAME ".DeviceInfo";
+			none.pin_value = nos::Buffer::From(NoneDeviceInfo());
+			namedValues.values.emplace_back(std::make_unique<fb::TNamedValue>(std::move(none)));
+			fb::TNamedValue unknown;
+			unknown.value_name = "Unknown";
+			unknown.type_name = NOS_DEVICE_SUBSYSTEM_NAME ".DeviceInfo";
+			namedValues.values.emplace_back(std::make_unique<fb::TNamedValue>(std::move(unknown)));
+			update.added_or_updated.emplace_back(std::make_unique<fb::TNamedValues>(std::move(namedValues)));
+		}
+		std::unordered_set<std::string> newNvNames;
+		for (auto& newNv : update.added_or_updated)
+			newNvNames.insert(newNv->name);
+		for (auto& cur : NamedValueNames)
+			if (!newNvNames.contains(cur))
+				update.deleted.push_back(cur);
+		NamedValueNames = newNvNames;
+		SendNamedValueUpdates(update);
+	}
+
+	void UpdateDeviceTagNamedValuesUnlocked()
+	{
+		TUpdateNamedValues update;
+		std::unordered_map<std::string, std::vector<DeviceProperties>> map;
+		for (auto& [id, props] : Devices)
+		{
+			for (auto& tag : props.Tags)
+				map[GetSuffixForTag(props.VendorName, tag)].push_back(props);
+		}
+		std::unordered_map<std::string, std::unordered_map<std::string, uint32_t>> modelIndices;
+		for (auto& [subName, devices] : map)
+		{
+			fb::TNamedValues namedValues;
+			namedValues.name = GetDeviceListNameForSuffix(subName);
+			for (auto& device : devices)
+			{
+				fb::TNamedValue value;
+				auto modelNameStr = device.ModelName.AsString();
+				value.value_name = modelNameStr + " - " + std::to_string(++modelIndices[subName][modelNameStr]);
 				value.type_name = NOS_DEVICE_SUBSYSTEM_NAME ".DeviceInfo";
 				auto buf = device.GetDeviceInfoPinValue();
 				value.pin_value = buf;
@@ -336,7 +399,20 @@ nosResult NOSAPI_CALL GetDeviceListName(nosName vendorName, nosName* outNamedVal
 {
 	if (!outNamedValueListName)
 		return NOS_RESULT_INVALID_ARGUMENT;
-	*outNamedValueListName = nos::Name(DeviceManager::GetInstance().GetDeviceListName(nos::Name(vendorName).AsString()));
+	*outNamedValueListName = nos::Name(DeviceManager::GetInstance().GetDeviceListNameForSuffix(nos::Name(vendorName).AsString()));
+	return NOS_RESULT_SUCCESS;
+}
+
+nosResult NOSAPI_CALL AddDeviceTag(nosDeviceId deviceId, nosName tag)
+{
+	return DeviceManager::GetInstance().AddTag(deviceId, tag) ? NOS_RESULT_SUCCESS : NOS_RESULT_NOT_FOUND;
+}
+
+nosResult NOSAPI_CALL GetDeviceListName(nosName vendorName, nosName tag, nosName* outNamedValueListName)
+{
+	if (!outNamedValueListName)
+		return NOS_RESULT_INVALID_ARGUMENT;
+	*outNamedValueListName = nos::Name(DeviceManager::GetInstance().GetDeviceListNameForSuffix(GetSuffixForTag(vendorName, tag)));
 	return NOS_RESULT_SUCCESS;
 }
 
@@ -376,6 +452,8 @@ nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 	subsystem->GetDeviceInfo = GetDeviceInfo;
 	subsystem->GetDevicesWithVendor = GetDevicesWithVendor;
 	subsystem->GetDeviceProperties = GetDeviceProperties;
+	subsystem->AddDeviceTag = AddDeviceTag;
+	subsystem->GetDeviceListNameForTag = GetDeviceListName;
 	*outSubsystemContext = subsystem;
 	GExportedAPIVersions[minorVersion] = subsystem;
 	return NOS_RESULT_SUCCESS;

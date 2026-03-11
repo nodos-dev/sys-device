@@ -44,6 +44,9 @@ typedef struct nosDeviceSubsystem {
 	nosResult (NOSAPI_CALL* GetDeviceHandle)(nosDeviceId deviceId, uint64_t* outHandle);
 	nosResult (NOSAPI_CALL* GetDeviceInfo)(nosDeviceId deviceId, nosDeviceInfo* outInfo);
 	void (NOSAPI_CALL* GetDevicesWithVendor)(nosName vendorName, nosDeviceId* outDevices, uint64_t* outCount);
+	// TODO APITransition: Clean the design
+	nosResult (NOSAPI_CALL* AddDeviceTag)(nosDeviceId deviceId, nosName tag);
+	nosResult (NOSAPI_CALL* GetDeviceListNameForTag)(nosName vendorName, nosName tag, nosName* outName);
 } nosDeviceSubsystem;
 
 #pragma region Helper Declarations & Macros
@@ -51,7 +54,7 @@ typedef struct nosDeviceSubsystem {
 // Make sure these are same with nossys file.
 #define NOS_DEVICE_SUBSYSTEM_NAME "nos.sys.device"
 #define NOS_DEVICE_SUBSYSTEM_VERSION_MAJOR 0
-#define NOS_DEVICE_SUBSYSTEM_VERSION_MINOR 2
+#define NOS_DEVICE_SUBSYSTEM_VERSION_MINOR 4
 
 extern struct nosModuleInfo nosDeviceSubsystemModuleInfo;
 extern nosDeviceSubsystem* nosDevice;
@@ -115,6 +118,14 @@ inline std::string GetDeviceListNameForVendor(nos::Name vendorName)
 {
 	nosName outName{};
 	auto res = nosDevice->GetDeviceListNameForVendor(vendorName, &outName);
+	assert(res == NOS_RESULT_SUCCESS);
+	return nos::Name(outName).AsString();
+}
+
+inline std::string GetDeviceListNameForTag(nos::Name vendorName, nos::Name tag)
+{
+	nosName outName{};
+	auto res = nosDevice->GetDeviceListNameForTag(vendorName, tag, &outName);
 	assert(res == NOS_RESULT_SUCCESS);
 	return nos::Name(outName).AsString();
 }

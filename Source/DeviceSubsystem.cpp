@@ -226,7 +226,7 @@ struct DeviceManager
 		if (it == Devices.end())
 			return false;
 		it->second.Tags.push_back(tag);
-		 UpdateDeviceTagNamedValuesUnlocked();
+		UpdateDeviceTagNamedValuesUnlocked();
 		return true;
 	}
 
@@ -309,10 +309,10 @@ private:
 		std::unordered_set<std::string> newNvNames;
 		for (auto& newNv : update.added_or_updated)
 			newNvNames.insert(newNv->name);
-		for (auto& cur : NamedValueNames)
+		for (auto& cur : VendorNamedValueListNames)
 			if (!newNvNames.contains(cur))
 				update.deleted.push_back(cur);
-		NamedValueNames = newNvNames;
+		VendorNamedValueListNames = newNvNames;
 		SendNamedValueUpdates(update);
 	}
 
@@ -354,10 +354,10 @@ private:
 		std::unordered_set<std::string> newNvNames;
 		for (auto& newNv : update.added_or_updated)
 			newNvNames.insert(newNv->name);
-		for (auto& cur : NamedValueNames)
+		for (auto& cur : TagNamedValueListNames)
 			if (!newNvNames.contains(cur))
 				update.deleted.push_back(cur);
-		NamedValueNames = newNvNames;
+		TagNamedValueListNames = newNvNames;
 		SendNamedValueUpdates(update);
 	}
 
@@ -366,7 +366,8 @@ private:
 	std::shared_mutex DevicesMutex;
 	std::unordered_map<nosDeviceId, DeviceProperties> Devices;
 	nosDeviceId NextDeviceId = 0;
-	std::unordered_set<std::string> NamedValueNames;
+	std::unordered_set<std::string> VendorNamedValueListNames;
+	std::unordered_set<std::string> TagNamedValueListNames;
 };
 
 DeviceManager DeviceManager::Instance{};

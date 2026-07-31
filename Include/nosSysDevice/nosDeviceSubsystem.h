@@ -56,6 +56,9 @@ typedef struct nosDeviceSubsystem {
 	// TODO APITransition: Clean the design
 	nosResult (NOSAPI_CALL* AddDeviceTag)(nosDeviceId deviceId, nosName tag);
 	nosResult (NOSAPI_CALL* GetDeviceListNameForTag)(nosName vendorName, nosName tag, nosName* outName);
+	// Overwrites the listed properties of an already registered device and notifies the editors.
+	// Properties that are not listed are left as they are. Use for values that change over time.
+	nosResult (NOSAPI_CALL* UpdateDeviceProperties)(nosDeviceId deviceId, const nosDeviceProperty* properties, uint64_t propertyCount);
 } nosDeviceSubsystem;
 
 #pragma region Helper Declarations & Macros

@@ -39,7 +39,20 @@ struct DeviceProperties
 	
 	std::vector<nos::Name> Tags;
 
-	std::unordered_map<nos::Name, std::string> Properties; // Additional properties
+	// Additional properties. Kept in insertion order so that the editor's device info
+	// pane does not reshuffle every time a live property is updated.
+	std::vector<std::pair<nos::Name, std::string>> Properties;
+
+	void SetProperty(nos::Name name, const char* value)
+	{
+		for (auto& [propName, propValue] : Properties)
+			if (propName == name)
+			{
+				propValue = value;
+				return;
+			}
+		Properties.emplace_back(name, value);
+	}
 
 	DeviceProperties() = default;
 	DeviceProperties(nosDeviceId id, const nosRegisterDeviceParams& params, nos::Name pluginName)
@@ -79,7 +92,7 @@ struct DeviceManager
 		++NextDeviceId;
 		DeviceProperties props(NextDeviceId, params, callingPluginName);
 		for (uint32_t i = 0; i < params.PropertyCount; i++) {
-			props.Properties[params.Properties[i].Name] = params.Properties[i].Value;
+			props.SetProperty(params.Properties[i].Name, params.Properties[i].Value);
 		}
 
 		*outDeviceId = NextDeviceId;
@@ -206,10 +219,23 @@ struct DeviceManager
 		if (outProperties) {
 			uint32_t i = 0;
 			for (auto& [name, val] : it->second.Properties) {
-				outProperties[i].Name = nos::Name(name);
+				outProperties[i].Name = name;
 				outProperties[i].Value = val.c_str();
+				++i;
 			}
 		}
+		return NOS_RESULT_SUCCESS;
+	}
+
+	nosResult UpdateDeviceProperties(nosDeviceId deviceId, const nosDeviceProperty* properties, uint64_t propertyCount)
+	{
+		std::unique_lock lock(DevicesMutex);
+		auto it = Devices.find(deviceId);
+		if (it == Devices.end())
+			return NOS_RESULT_NOT_FOUND;
+		for (uint64_t i = 0; i < propertyCount; i++)
+			it->second.SetProperty(properties[i].Name, properties[i].Value);
+		SendDeviceListToEditorsUnlocked();
 		return NOS_RESULT_SUCCESS;
 	}
 
@@ -436,6 +462,12 @@ nosResult NOSAPI_CALL GetDeviceProperties(nosDeviceId deviceId, nosDevicePropert
 	return DeviceManager::GetInstance().GetDeviceProperties(deviceId, outProperties, outPropertiesCount);
 }
 
+nosResult NOSAPI_CALL UpdateDeviceProperties(nosDeviceId deviceId, const nosDeviceProperty* properties, uint64_t propertyCount) {
+	if (!properties && propertyCount)
+		return NOS_RESULT_INVALID_ARGUMENT;
+	return DeviceManager::GetInstance().UpdateDeviceProperties(deviceId, properties, propertyCount);
+}
+
 nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 {
 	auto it = GExportedAPIVersions.find(minorVersion);
@@ -455,6 +487,7 @@ nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 	subsystem->GetDeviceProperties = GetDeviceProperties;
 	subsystem->AddDeviceTag = AddDeviceTag;
 	subsystem->GetDeviceListNameForTag = GetDeviceListName;
+	subsystem->UpdateDeviceProperties = UpdateDeviceProperties;
 	*outSubsystemContext = subsystem;
 	GExportedAPIVersions[minorVersion] = subsystem;
 	return NOS_RESULT_SUCCESS;
